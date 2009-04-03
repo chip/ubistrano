@@ -27,7 +27,13 @@ Capistrano::Configuration.instance(:must_exist).load do
           "chown -R #{user} #{release_path}/tmp/attachment_fu"
         ]
       end
-      
+
+      desc "Plugins hook (shared by releases)"
+      task :plugins_hook, :roles => :app do
+        run "mkdir -p #{release_path}/vendor",
+        run "ln -sf #{shared_path}/extras #{release_path}/vendor/plugins"
+      end
+            
       desc "Configure asset_packager" 
       task :asset_packager do
         run "source ~/.bash_profile && cd #{release_path} && rake RAILS_ENV=production asset:packager:build_all"
