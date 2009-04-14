@@ -55,7 +55,7 @@ Capistrano::Configuration.instance(:must_exist).load do
           run "haml --rails ."
         else
           puts "Installing #{plugin[:repo]}"
-          path = mkdir_p path
+          path = FileUtils.mkdir_p path
           run "cd #{path} && git init && git remote add origin #{plugin[:repo]}"
           git_fetch_and_checkout(plugin, path)
 
