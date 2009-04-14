@@ -30,7 +30,7 @@ Capistrano::Configuration.instance(:must_exist).load do
 
       desc "Plugins hook (shared by releases)"
       task :plugins_hook, :roles => :app do
-        run "mkdir -p #{release_path}/vendor",
+        run "mkdir -p #{release_path}/vendor"
         run "ln -sf #{shared_path}/extras #{release_path}/vendor/plugins"
       end
             
