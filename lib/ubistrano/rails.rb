@@ -73,9 +73,10 @@ Capistrano::Configuration.instance(:must_exist).load do
           return
         end
         path = install_path plugin
-        #return path unless File.exists?(path)
+        # return path unless File.exists?(path)
         puts "Removing #{path}"
         run "rm -rf #{path}"
+        return path
       end
 
       def git_fetch_and_checkout(plugin, path)
