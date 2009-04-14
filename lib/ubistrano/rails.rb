@@ -78,5 +78,102 @@ Capistrano::Configuration.instance(:must_exist).load do
       run "cd #{release_path}; git submodule init; git submodule update"
     end
   end
+  
+  namespace :plugins do      
+    desc 'Adds plugins defined in config/plugins.rb'
+    task :install do
+      if ENV['quiet'] == 'true'
+        go = true
+      else
+        puts "Review config/plugins.rb. Install plugins now? (y/n)"
+        go = STDIN.gets.upcase.strip == 'Y'
+      end
+      if go
+        eval(File.read('config/plugins.rb')).each do |plugin|
+          install_plugin plugin
+        end
+      end
+    end
+    
+    desc 'Updates plugins defined in config/plugins.rb'
+    task :update do
+      eval(File.read('config/plugins.rb')).each do |plugin|
+        path = install_path plugin
+        if File.exists?(path)
+          next if plugin == 'haml'
+          Dir.chdir path do
+            git_fetch_and_checkout(plugin, path)
+          end
+        else
+          install_plugin plugin
+        end
+      end
+    end
+    
+    desc 'Removes plugins defined in config/plugins.rb'
+    task :remove do
+      eval(File.read('config/plugins.rb')).each do |plugin|
+        remove_plugin plugin
+      end
+    end
+    
+    def install_path(plugin)
+      plugin[:to] || "vendor/plugins/#{plugin == 'haml' ? 'haml' : File.basename(plugin[:repo], '.git')}"
+    end
+    
+    def install_plugin(plugin)
+      if plugin[:repo] && plugin[:repo].include?('app_helpers')
+        puts "Skipping #{plugin[:repo]}"
+        return
+      end
+      path = remove_plugin plugin
+      if plugin == 'haml'
+        puts 'Installing haml'
+        run "haml --rails ."
+      else
+        puts "Installing #{plugin[:repo]}"
+        path = mkdir_p path
+        run "cd #{path} && git init && git remote add origin #{plugin[:repo]}"
+        git_fetch_and_checkout(plugin, path)
+        
+        # Dir.chdir path do
+        #   run "git init"
+        #   run "git remote add origin #{plugin[:repo]}"
+        #   git_fetch_and_checkout plugin
+        # end
+      end
+    end
+    
+    def remove_plugin(plugin)
+      if plugin[:repo] && plugin[:repo].include?('app_helpers')
+        puts "Skipping #{plugin[:repo]}"
+        return
+      end
+      path = install_path plugin
+      #return path unless File.exists?(path)
+      puts "Removing #{path}"
+      run "rm -rf #{path}"
+    end
+    
+    def git_fetch_and_checkout(plugin, path)
+      if plugin[:tag] || plugin[:branch]
+        puts "Fetching #{plugin[:repo]}"
+        run "cd #{path} && git fetch #{plugin[:depth] ? "--depth #{plugin[:depth]} " : ''}#{plugin[:tag] ? '-t ' : ''}-q"
+      else
+        puts "Pulling #{plugin[:repo]}"
+        run "cd #{path} && git pull #{plugin[:depth] ? "--depth #{plugin[:depth]} " : ''}-q origin master"
+      end
+      puts "Checking out #{git_head(plugin)}"
+      run "cd #{path} && git checkout #{git_head(plugin)} -q"
+    end
+    
+    def git_head(plugin)
+      return plugin[:commit]             if plugin[:commit]
+      return "origin/#{plugin[:branch]}" if plugin[:branch]
+      return "tags/#{plugin[:tag]}"      if plugin[:tag]
+      return 'master'
+    end
+  end
+  
 
 end
